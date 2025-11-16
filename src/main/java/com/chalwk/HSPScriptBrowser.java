@@ -91,7 +91,7 @@ public class HSPScriptBrowser extends JFrame {
         titleLabel.setBorder(new EmptyBorder(0, 0, 10, 0));
 
         // Subtitle
-        JLabel subtitleLabel = new JLabel("Browse and download Halo scripting project scripts");
+        JLabel subtitleLabel = new JLabel("Browse and download SAPP Lua scripts from the HALO SCRIPT PROJECTS GitHub Repository");
         subtitleLabel.setForeground(new Color(200, 220, 255));
         subtitleLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
 
@@ -246,9 +246,18 @@ public class HSPScriptBrowser extends JFrame {
         progressBar.setBackground(new Color(220, 220, 220));
         progressBar.setFont(new Font("Segoe UI", Font.PLAIN, 11));
 
-        panel.add(statusLabel, BorderLayout.NORTH);
-        panel.add(progressBar, BorderLayout.CENTER);
+        JLabel copyrightLabel = new JLabel("HSP Script Browser © 2025 Jericho Crosby (Chalwk) - Licensed under MIT", SwingConstants.CENTER);
+        copyrightLabel.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+        copyrightLabel.setForeground(new Color(150, 150, 150));
+        copyrightLabel.setBorder(new EmptyBorder(5, 0, 5, 0));
 
+        JPanel statusPanel = new JPanel(new BorderLayout());
+        statusPanel.setBackground(new Color(245, 247, 250));
+        statusPanel.add(statusLabel, BorderLayout.NORTH);
+        statusPanel.add(progressBar, BorderLayout.CENTER);
+        statusPanel.add(copyrightLabel, BorderLayout.SOUTH);
+
+        panel.add(statusPanel, BorderLayout.CENTER);
         return panel;
     }
 
