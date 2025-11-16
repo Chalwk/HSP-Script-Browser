@@ -46,7 +46,7 @@ public class ScriptListRenderer extends JPanel implements ListCellRenderer<Scrip
             descriptionLabel.setText(script.getShortDescription());
         }
 
-        // Set background and foreground colors based on selection
+        // Background and foreground colors based on selection
         if (isSelected) {
             setBackground(new Color(59, 89, 152));
             titleLabel.setForeground(Color.WHITE);
@@ -64,7 +64,7 @@ public class ScriptListRenderer extends JPanel implements ListCellRenderer<Scrip
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
 
-        // Add a subtle border for selected items
+        // Border for selected items
         if (isSelected) {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);

@@ -24,6 +24,7 @@ import javax.swing.event.ListSelectionListener;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.io.File;
 import java.net.URI;
@@ -57,7 +58,6 @@ public class HSPScriptBrowser extends JFrame {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             try {
-                // Set system look and feel
                 UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
             } catch (Exception e) {
                 e.printStackTrace();
@@ -73,25 +73,20 @@ public class HSPScriptBrowser extends JFrame {
         setMinimumSize(new Dimension(1000, 700));
         setLocationRelativeTo(null);
 
-        // Set modern look and feel
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-        // Create main panel with modern styling
+        // Create main panel
         JPanel mainPanel = new JPanel(new BorderLayout());
         mainPanel.setBackground(new Color(245, 247, 250));
         mainPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
 
-        // Add header
+        // Add header, content and panel
         mainPanel.add(createHeaderPanel(), BorderLayout.NORTH);
-
-        // Add content
         mainPanel.add(createContentPanel(), BorderLayout.CENTER);
-
-        // Add status panel
         mainPanel.add(createStatusPanel(), BorderLayout.SOUTH);
 
         setContentPane(mainPanel);
@@ -165,7 +160,7 @@ public class HSPScriptBrowser extends JFrame {
         searchField.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         searchField.getDocument().addDocumentListener(new SearchDocumentListener());
 
-        // Add search icon
+        // Search icon
         JPanel searchFieldPanel = new JPanel(new BorderLayout());
         searchFieldPanel.setBackground(Color.WHITE);
         searchFieldPanel.add(searchField, BorderLayout.CENTER);
@@ -326,7 +321,7 @@ public class HSPScriptBrowser extends JFrame {
     }
 
     private void applyModernStyling() {
-        // Set UI defaults for modern look
+        // Set UI defaults
         UIManager.put("ComboBox.background", Color.WHITE);
         UIManager.put("ComboBox.foreground", new Color(60, 60, 60));
         UIManager.put("ComboBox.selectionBackground", new Color(59, 89, 152));
@@ -375,10 +370,10 @@ public class HSPScriptBrowser extends JFrame {
             }
         });
 
-        // Add keyboard navigation to script list
-        scriptList.addKeyListener(new java.awt.event.KeyAdapter() {
+        // Keyboard navigation
+        scriptList.addKeyListener(new KeyAdapter() {
             @Override
-            public void keyPressed(java.awt.event.KeyEvent e) {
+            public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_ENTER && downloadButton.isEnabled()) {
                     downloadButton.doClick();
                 }
@@ -457,7 +452,7 @@ public class HSPScriptBrowser extends JFrame {
     private List<ScriptMetadata> applyRelevanceSearch(List<ScriptMetadata> scripts, String searchText) {
         return scripts.stream()
                 .map(script -> calculateRelevance(script, searchText))
-                .filter(result -> matchesSearch(result.script, searchText)) // Use matchesSearch to filter
+                .filter(result -> matchesSearch(result.script, searchText))
                 .sorted((r1, r2) -> Integer.compare(r2.score, r1.score)) // Descending order by relevance
                 .map(result -> result.script)
                 .collect(Collectors.toList());
