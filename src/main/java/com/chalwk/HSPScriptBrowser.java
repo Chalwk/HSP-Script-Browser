@@ -54,6 +54,19 @@ public class HSPScriptBrowser extends JFrame {
         setupKeyboardNavigation();
     }
 
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            try {
+                // Set system look and feel
+                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            new HSPScriptBrowser().setVisible(true);
+        });
+    }
+
     private void initializeUI() {
         setTitle("HSP Script Browser");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -423,11 +436,11 @@ public class HSPScriptBrowser extends JFrame {
         // Apply search filter
         String searchText = searchField.getText().trim().toLowerCase();
         if (!searchText.isEmpty()) {
-            categoryScripts = applyFuzzySearch(categoryScripts, searchText);
+            categoryScripts = applyRelevanceSearch(categoryScripts, searchText);
+        } else {
+            // Sort by title when no search
+            categoryScripts.sort(Comparator.comparing(ScriptMetadata::getTitle));
         }
-
-        // Sort by title
-        categoryScripts.sort(Comparator.comparing(ScriptMetadata::getTitle));
 
         filteredScripts = categoryScripts;
         scriptList.setListData(filteredScripts.toArray(new ScriptMetadata[0]));
@@ -441,28 +454,76 @@ public class HSPScriptBrowser extends JFrame {
         updateStatistics();
     }
 
-    private List<ScriptMetadata> applyFuzzySearch(List<ScriptMetadata> scripts, String searchText) {
+    private List<ScriptMetadata> applyRelevanceSearch(List<ScriptMetadata> scripts, String searchText) {
         return scripts.stream()
-                .filter(script -> matchesSearch(script, searchText))
+                .map(script -> calculateRelevance(script, searchText))
+                .filter(result -> matchesSearch(result.script, searchText)) // Use matchesSearch to filter
+                .sorted((r1, r2) -> Integer.compare(r2.score, r1.score)) // Descending order by relevance
+                .map(result -> result.script)
                 .collect(Collectors.toList());
+    }
+
+    private SearchResult calculateRelevance(ScriptMetadata script, String searchText) {
+        int score = 0;
+        String title = script.getTitle().toLowerCase();
+        String filename = script.getFilenameWithoutExtension() != null ?
+                script.getFilenameWithoutExtension().toLowerCase() : "";
+        String description = script.getDescription() != null ? script.getDescription().toLowerCase() : "";
+        String shortDescription = script.getShortDescription() != null ?
+                script.getShortDescription().toLowerCase() : "";
+        String category = script.getCategory().getDisplayName().toLowerCase();
+
+        String[] searchTerms = searchText.toLowerCase().split("\\s+");
+
+        for (String term : searchTerms) {
+            // Exact matches (highest score)
+            if (title.equals(term)) score += 100;
+            if (filename.equals(term)) score += 100;
+
+            // Contains matches (medium score)
+            if (title.contains(term)) score += 50;
+            if (filename.contains(term)) score += 50;
+            if (description.contains(term)) score += 10;
+            if (shortDescription.contains(term)) score += 10;
+            if (category.contains(term)) score += 5;
+
+            // Fuzzy matches (lowest score)
+            if (fuzzyMatch(title, term)) score += 3;
+            if (fuzzyMatch(filename, term)) score += 3;
+            if (fuzzyMatch(description, term)) score += 1;
+        }
+
+        return new SearchResult(script, score);
     }
 
     private boolean matchesSearch(ScriptMetadata script, String searchText) {
         if (searchText.isEmpty()) return true;
 
         String[] searchTerms = searchText.toLowerCase().split("\\s+");
-        String title = script.getTitle().toLowerCase();
-        String description = script.getDescription().toLowerCase();
-        String shortDescription = script.getShortDescription().toLowerCase();
+        String title = script.getTitle() != null ? script.getTitle().toLowerCase() : "";
+        String description = script.getDescription() != null ? script.getDescription().toLowerCase() : "";
+        String shortDescription = script.getShortDescription() != null ?
+                script.getShortDescription().toLowerCase() : "";
         String category = script.getCategory().getDisplayName().toLowerCase();
+        String filename = script.getFilenameWithoutExtension() != null ?
+                script.getFilenameWithoutExtension().toLowerCase() : "";
 
         for (String term : searchTerms) {
-            boolean matches = title.contains(term) ||
-                    description.contains(term) ||
-                    shortDescription.contains(term) ||
-                    category.contains(term) ||
-                    fuzzyMatch(title, term) ||
-                    fuzzyMatch(description, term);
+            boolean matches =
+                    // Exact matches (highest priority)
+                    title.equals(term) ||
+                            filename.equals(term) ||
+
+                            // Contains matches (medium priority)
+                            title.contains(term) ||
+                            filename.contains(term) ||
+                            description.contains(term) ||
+                            shortDescription.contains(term) ||
+                            category.contains(term) ||
+
+                            // Fuzzy matches (lowest priority)
+                            fuzzyMatch(title, term) ||
+                            fuzzyMatch(filename, term);
 
             if (!matches) {
                 return false;
@@ -500,17 +561,41 @@ public class HSPScriptBrowser extends JFrame {
         statisticsLabel.setText(statsText);
     }
 
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            try {
-                // Set system look and feel
-                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+    private void downloadScript(ScriptMetadata script, File outputFile) {
+        new Thread(() -> {
+            SwingUtilities.invokeLater(() -> {
+                downloadButton.setEnabled(false);
+                statusLabel.setText("Downloading " + script.getFilename() + "...");
+                progressBar.setVisible(true);
+                progressBar.setValue(0);
+            });
 
-            new HSPScriptBrowser().setVisible(true);
-        });
+            boolean success = ScriptService.downloadScript(script, outputFile, progressBar, statusLabel);
+
+            SwingUtilities.invokeLater(() -> {
+                downloadButton.setEnabled(true);
+                progressBar.setVisible(false);
+                if (success) {
+                    statusLabel.setText("Successfully downloaded " + script.getFilename());
+                    JOptionPane.showMessageDialog(HSPScriptBrowser.this,
+                            "Script '" + script.getTitle() + "' downloaded successfully!\n\n" +
+                                    "Location: " + outputFile.getAbsolutePath(),
+                            "Download Complete", JOptionPane.INFORMATION_MESSAGE);
+                } else {
+                    statusLabel.setText("Download failed for " + script.getFilename());
+                }
+            });
+        }).start();
+    }
+
+    private static class SearchResult {
+        ScriptMetadata script;
+        int score;
+
+        SearchResult(ScriptMetadata script, int score) {
+            this.script = script;
+            this.score = score;
+        }
     }
 
     private class ScriptSelectionListener implements ListSelectionListener {
@@ -588,32 +673,5 @@ public class HSPScriptBrowser extends JFrame {
         public void changedUpdate(DocumentEvent e) {
             filterScripts();
         }
-    }
-
-    private void downloadScript(ScriptMetadata script, File outputFile) {
-        new Thread(() -> {
-            SwingUtilities.invokeLater(() -> {
-                downloadButton.setEnabled(false);
-                statusLabel.setText("Downloading " + script.getFilename() + "...");
-                progressBar.setVisible(true);
-                progressBar.setValue(0);
-            });
-
-            boolean success = ScriptService.downloadScript(script, outputFile, progressBar, statusLabel);
-
-            SwingUtilities.invokeLater(() -> {
-                downloadButton.setEnabled(true);
-                progressBar.setVisible(false);
-                if (success) {
-                    statusLabel.setText("Successfully downloaded " + script.getFilename());
-                    JOptionPane.showMessageDialog(HSPScriptBrowser.this,
-                            "Script '" + script.getTitle() + "' downloaded successfully!\n\n" +
-                                    "Location: " + outputFile.getAbsolutePath(),
-                            "Download Complete", JOptionPane.INFORMATION_MESSAGE);
-                } else {
-                    statusLabel.setText("Download failed for " + script.getFilename());
-                }
-            });
-        }).start();
     }
 }

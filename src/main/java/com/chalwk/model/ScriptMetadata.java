@@ -69,4 +69,9 @@ public class ScriptMetadata {
         return "https://raw.githubusercontent.com/Chalwk/HALO-SCRIPT-PROJECTS/master/sapp/" +
                 category.getFolderName() + "/" + filename;
     }
+
+    public String getFilenameWithoutExtension() {
+        if (filename == null) return null;
+        return filename.replace(".lua", "");
+    }
 }
